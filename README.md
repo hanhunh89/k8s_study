@@ -500,5 +500,162 @@ worker2:/tmp$ cat test.txt
 hello
 ```
 
+## persistent volume.
+we will create persistent volume and make mysql server.<br>
+
+first, create the volume.
+```
+#pv.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mysql-pv-volume
+  labels:
+    type: local
+spec:
+  storageClassName: my-storage
+  capacity:
+    storage: 20Gi
+  accessModes:
+  - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data"  # we don't have external storage.... so, just use local dist.
+```
+
+second, create volumeClaim<br>
+bind PersistentVolumeClaim (PVC) and PersistentVolume (PV) with the name 'my-storage.'
+```
+#pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pv-claim
+spec:
+  storageClassName: my-storage
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+```
+```
+kubectl apply -f pvc.yaml
+```
+
+third, create pod
+```
+#pvc-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+spec:
+  selector:
+    matchLabels:
+      app: mysql
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - image: mysql:8.0.29
+        name: mysql
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: password
+        ports:
+        - containerPort: 3306
+          name : mysql
+        volumeMounts:
+        - name: mysql-persistent-storage
+          mountPath: var/mysql
+      volumes:
+        - name: mysql-persistent-storage
+          persistentVolumeClaim:
+            claimName: mysql-pv-claim
+```
+```
+kubectl apply -f pvc-deployment.yaml
+```
+
+fourth, create service
+```
+#mysql_service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+spec:
+  clusterIP: None
+  ports:
+  - port: 3306
+  selector:
+    app: mysql
+```
+```
+kubectl create -f mysql_service.yaml
+```
 
 
+get pvc info
+```
+$ kubectl get pvc
+NAME             STATUS   VOLUME            CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+mysql-pv-claim   Bound    mysql-pv-volume   20Gi       RWO            my-storage     3m40s
+```
+what is access modes?<br>
+1. RWO(read wirte once) : only one node access to storage.<br>
+2. ROX(read only many) : many node can mount, but read only.<br>
+3. RWX(read write many) : many node mount this. all node can write, read.<br>
+4. RWOP(read write once pod) : only one pod can mount.<br><br>
+
+## use mysql
+let's create table
+```
+$kubectl get pods
+NAME                     READY   STATUS    RESTARTS   AGE
+mysql-74d9b99946-gvzqv   1/1     Running   0          2s
+
+$ kubectl exec -it mysql-74d9b99946-gvzqv -- /bin/bash
+$ mysql -u root -p
+Enter password:   #password is password. we made it pvc-deployment.yaml
+
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+Your MySQL connection id is 8
+Server version: 8.0.29 MySQL Community Server - GPL
+
+Copyright (c) 2000, 2022, Oracle and/or its affiliates.
+
+Oracle is a registered trademark of Oracle Corporation and/or its
+affiliates. Other names may be trademarks of their respective
+owners.
+
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+
+mysql> create DATABASE mydb
+    -> ;
+Query OK, 1 row affected (0.01 sec)
+
+mysql> use mydb
+Database changed
+
+mysql> create table test(id int, name varchar(30));
+Query OK, 0 rows affected (0.03 sec)
+
+mysql> select * from test;
+Empty set (0.01 sec)
+
+mysql> insert into test value(1,'aa');
+Query OK, 1 row affected (0.00 sec)
+
+mysql> select * from test;
++------+------+
+| id   | name |
++------+------+
+|    1 | aa   |
++------+------+
+1 row in set (0.00 sec)
+```
