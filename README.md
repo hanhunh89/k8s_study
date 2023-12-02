@@ -416,7 +416,7 @@ when pod running, read the secret, and give to container.
 kubectl create secret generic dbuser --from-literal=username=myuser --from-literal=password=1234
 ```
 
-# volume
+# ch7. volume
 we can make three type of volume<br>
 1. pod volume : storage is inside pod. if pod restarted, we loses the volume.<br>
    ex) emptyDir <br>
