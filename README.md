@@ -415,3 +415,90 @@ when pod running, read the secret, and give to container.
 ```
 kubectl create secret generic dbuser --from-literal=username=myuser --from-literal=password=1234
 ```
+
+# volume
+we can make three type of volume<br>
+1. pod volume : storage is inside pod. if pod restarted, we loses the volume.<br>
+   ex) emptyDir <br>
+2. worker node volume :  storage is inside node. if node restarted, we loses the volume.<br>
+   ex) hostPath <br>
+3. 2. external volume :  storage is inside kubernetes. if node restarted, we keep the volume.<br>
+   ex) NFS, cephFS, glusterFS, iSCSI, AWS EBS, azureDisk <br>
+
+## emptyDir
+emptydir creaed and removed with pod. 
+
+```
+#emptydir.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emptydata # creates pod. pod name is emptydata
+spec:
+  containers:
+  - name: nginx # container name is nginx. we mount /data/shared to nginx
+    image: nginx
+    volumeMounts:
+    - name: shared-storage
+      mountPath: /data/shared
+  volumes: #create volume. volume name is shared-storage
+  - name: shared-storage
+    emptyDir: {}
+```
+we create pod. <br>
+pod mounts "shared-storage" at /data/shared. <br>
+shared-storage is emptyDir.
+
+```
+kubectl apply -f emptydir.yaml
+```
+
+check volume
+```
+$ kubectl get pod
+NAME        READY   STATUS    RESTARTS   AGE
+emptydata   1/1     Running   0          16s
+
+$ kubectl exec -it emptydata -- /bin/bash
+$ cd /data/shared
+$ echo "hello" > test.txt
+$ cat hello
+```
+
+## hostPath
+hostPath created in Node local disk.
+So, even when the pod is removed, the hostPath persists.
+
+```
+#hostpath.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hostpath
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    volumeMounts:
+    - name: localpath
+      mountPath: /data/shared   # worker node directory(/tmp) is mounted /data/shared
+  volumes:
+  - name: localpath
+    hostPath:
+      path: /tmp   # we use worker node directory /tmp as hostPath
+      type: Directory
+```
+```
+kubectl apply -f hostpath.yaml
+kubectl exec -t hostpath -- /bin/bash
+cd /data/shared
+echo "hello" > test.txt
+```
+we can find test.txt file in worker node. 
+```
+worker2:/tmp$ cat test.txt
+hello
+```
+
+
+
