@@ -2,7 +2,9 @@
 
 reference : 쉽게 시작하는 쿠버네티스 / 서지영 <br><br>
 
-you can install k8s with https://github.com/hanhunh89/k8s_install
+you can install k8s with https://github.com/hanhunh89/k8s_install <br>
+
+
 # ch1. pod create and delete
 ## install httpd pod 
 master node
@@ -227,4 +229,189 @@ pod/3-replicaset-lm95h   1/1     Running   1 (39s ago)    2m6s
 pod/3-replicaset-p96hr   1/1     Running   1 (115s ago)   119s
 pod/3-replicaset-xch7q   1/1     Running   1 (52s ago)    2m6s
 pod/3-replicaset-xx4rp   1/1     Running   2 (32s ago)    119s
+```
+
+# ch4. DaemonSet
+deamonset create pod to all nodes.
+```
+#daemonsets.yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: prometheus-daemonset # our daemonset name
+spec:
+  selector:
+    matchLabels:
+      tier: monitoring # user set label. we this use damonset for monitoring
+      name : prometheus-exporter
+  template:
+    metadata:
+      labels:
+        tier: monitoring
+        name: prometheus-exporter
+    spec:
+      containers:
+      - name: prometheus
+        image: prom/node-exporter
+        ports:
+        - containerPort: 80
+```
+```
+kubectl apply -f daemonsets.yaml
+```
+check daemonset pod
+```
+$ kubectl describe daemonset/prometheus-daemonset
+Name:           prometheus-daemonset
+Selector:       name=prometheus-exporter,tier=monitoring
+Node-Selector:  <none>
+Labels:         <none>
+Annotations:    deprecated.daemonset.template.generation: 1
+Desired Number of Nodes Scheduled: 2
+Current Number of Nodes Scheduled: 2
+Number of Nodes Scheduled with Up-to-date Pods: 2
+Number of Nodes Scheduled with Available Pods: 2  # i created 2 workernode. so, we have 2 pod
+Number of Nodes Misscheduled: 0
+Pods Status:  2 Running / 0 Waiting / 0 Succeeded / 0 Failed
+Pod Template:
+  Labels:  name=prometheus-exporter
+           tier=monitoring
+  Containers:
+   prometheus:
+    Image:        prom/node-exporter
+    Port:         80/TCP
+    Host Port:    0/TCP
+    Environment:  <none>
+    Mounts:       <none>
+  Volumes:        <none>
+Events:
+  Type    Reason            Age    From                  Message
+  ----    ------            ----   ----                  -------
+  Normal  SuccessfulCreate  2m15s  daemonset-controller  Created pod: prometheus-daemonset-828m7
+  Normal  SuccessfulCreate  2m15s  daemonset-controller  Created pod: prometheus-daemonset-5s5sp
+```
+
+we can find 2 pods that running in each workernode
+```
+$ kubectl get pods -o wide
+NAME                         READY   STATUS    RESTARTS      AGE     IP             NODE      NOMINATED NODE   READINESS GATES
+prometheus-daemonset-5s5sp   1/1     Running   2 (56s ago)   3m35s   10.244.2.4     worker2   <none>           <none>
+prometheus-daemonset-828m7   1/1     Running   3 (30s ago)   3m35s   10.244.1.234   worker1   <none>           <none>
+```
+
+clear the project(you have to do this every end of chapter)
+```
+kubectl delete -f daemonsets.yaml
+```
+
+# ch5 cronjob
+```
+#cronjob.yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: hello
+spec:
+  schedule: "*/1 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: hello
+            image: busybox #very small linux
+            imagePullPolicy: IfNotPresent # we will download the busybox image when you don't have it.
+            command: # do command as the schedule
+            - /bin/sh
+            - -c
+            - data; echo Hello from the Kubernetes cluster
+          restartPolicy: OnFailure # you restart this when command is failed
+```
+```
+kubectl create -f cronjob.yaml
+```
+
+now, check the commnad
+```
+kubectl get cronjob -w
+NAME    SCHEDULE      SUSPEND   ACTIVE   LAST SCHEDULE   AGE
+hello   */1 * * * *   False     0        13s             51s
+hello   */1 * * * *   False     1        0s              98s
+hello   */1 * * * *   False     0        7s              105s
+hello   */1 * * * *   False     0        7s              105s
+hello   */1 * * * *   False     1        0s              2m38s
+hello   */1 * * * *   False     0        3s              2m41s
+hello   */1 * * * *   False     0        3s              2m41s
+```
+command is running good.
+```
+$ kubectl get pods -w
+NAME                   READY   STATUS      RESTARTS   AGE
+hello-28358309-k2t5c   0/1     Completed   0          3m
+hello-28358310-7rldj   0/1     Completed   0          2m
+hello-28358311-zrbk6   0/1     Completed   0          60s
+hello-28358312-qs8vn   0/1     Pending     0          0s
+hello-28358312-qs8vn   0/1     Pending     0          0s
+hello-28358312-qs8vn   0/1     ContainerCreating   0          0s
+hello-28358312-qs8vn   0/1     Completed           0          1s
+hello-28358312-qs8vn   0/1     Completed           0          2s
+hello-28358312-qs8vn   0/1     Completed           0          3s
+hello-28358312-qs8vn   0/1     Completed           0          3s
+hello-28358309-k2t5c   0/1     Terminating         0          3m3s
+hello-28358309-k2t5c   0/1     Terminating         0          3m3s
+hello-28358313-4gxnb   0/1     Pending             0          0s
+hello-28358313-4gxnb   0/1     Pending             0          0s
+hello-28358313-4gxnb   0/1     ContainerCreating   0          0s
+hello-28358313-4gxnb   0/1     Completed           0          1s
+hello-28358313-4gxnb   0/1     Completed           0          2s
+hello-28358313-4gxnb   0/1     Completed           0          3s
+hello-28358313-4gxnb   0/1     Completed           0          3s
+hello-28358310-7rldj   0/1     Terminating         0          3m3s
+hello-28358310-7rldj   0/1     Terminating         0          3m3s
+```
+kubenetes creates pod to execute command, and terminating.<br><br>
+
+clear the project
+```
+kubectl delete cronjob hello
+```
+
+# ch6 ConfigMap and secret
+configmap create command
+```
+kubectl create configmap <map-name> <data-source> <arguments>
+```
+map-name : name of configmap<br>
+data-source : configmap file/dir path<br>
+arguments : how to create configmap. file or literal<br>
+
+## literal configmap
+```
+kubectl create configmap my-config --from-literal=my_key1=my_value1 --from-literal=my_key2=my_value2
+```
+check configmap that we made
+```
+kubectl describe configmap
+```
+
+## file/dir configmap
+we use file that has config info.
+```
+echo Hello, world! >> configmap_test.html
+```
+```
+kubectl create configmap configmap-file --from-file configmap_test.html
+```
+```
+kubectl describe configmap
+```
+
+## secret
+configmap value is saved in container.<br>
+if you secret info(ex id/password), you can use secret.<br>
+secret is not saved in container.<br>
+when pod running, read the secret, and give to container.
+
+```
+kubectl create secret generic dbuser --from-literal=username=myuser --from-literal=password=1234
 ```
