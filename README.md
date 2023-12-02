@@ -420,9 +420,9 @@ kubectl create secret generic dbuser --from-literal=username=myuser --from-liter
 we can make three type of volume<br>
 1. pod volume : storage is inside pod. if pod restarted, we loses the volume.<br>
    ex) emptyDir <br>
-2. worker node volume :  storage is inside node. if node restarted, we loses the volume.<br>
+2. worker node volume :  storage is inside node. file is saved in node local disk.<br>
    ex) hostPath <br>
-3. 2. external volume :  storage is inside kubernetes. if node restarted, we keep the volume.<br>
+3. 2. external volume :  storage is outside of kubernetes. even node/pod restarted, we can keep the volume.<br>
    ex) NFS, cephFS, glusterFS, iSCSI, AWS EBS, azureDisk <br>
 
 ## emptyDir
