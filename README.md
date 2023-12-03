@@ -806,3 +806,8 @@ curl 10.244.2.238:80
 curl 10.104.105.212:8080
 curl 10.178.0.18:32274
 ```
+
+# ch10. loadbalancer
+```
+kubectl expose deployment [deploy-name] --type=LoadBalancer --name=[service-name]
+```
