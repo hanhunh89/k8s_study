@@ -659,3 +659,150 @@ mysql> select * from test;
 +------+------+
 1 row in set (0.00 sec)
 ```
+
+# ch8. cluster IP
+Service has clusterIP.<br>
+when you bind service to pod, you can connect to your pod with clusterIP<br>
+let's create pod.
+```
+#clusterip.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: clusterip-nginx
+spec:
+  selector:
+    machLabels:
+      run: clusterip-nginx
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        run: clusterip-nginx
+    spec:
+      containers:
+      - name: custerip-nginx
+        image: nginx
+        ports:
+        - containerPort: 80
+```
+```
+kubectl apply -f clusterip.yaml
+```
+
+let's create service
+```
+kubectl expose deployment/clusterip-nginx
+```
+
+for test clusterip-nginx, we create busybox
+```
+$ kubectl run busybox --rm -it --image=busybox /bin/sh
+
+$ kubectl get service
+NAME              TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)   AGE
+clusterip-nginx   ClusterIP   10.104.133.209   <none>        80/TCP    9s
+kubernetes        ClusterIP   10.96.0.1        <none>        443/TCP   2d17h
+
+$ wget 10.104.133.209
+
+$ cat index.html 
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+html { color-scheme: light dark; }
+body { width: 35em; margin: 0 auto;
+font-family: Tahoma, Verdana, Arial, sans-serif; }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, the nginx web server is successfully installed and
+working. Further configuration is required.</p>
+
+<p>For online documentation and support please refer to
+<a href="http://nginx.org/">nginx.org</a>.<br/>
+Commercial support is available at
+<a href="http://nginx.com/">nginx.com</a>.</p>
+
+<p><em>Thank you for using nginx.</em></p>
+</body>
+</html>
+```
+
+# ch9. NodePort
+create nginx pod and service
+```
+#nginx-deploy.yaml 
+apiVersion: apps/v1
+kind: Deployment
+metadata:  #deployment info
+  name: nginx-deploy  #name of delplyment
+  labels:
+    app: nginx    #label of deployment
+spec:
+  replicas: 3      # create 3 pods
+  selector:        # deployment manage the selector
+    matchLabels:
+      app: nginx
+  template:  # pod create option
+    metadata:
+      labels:
+        app: nginx  #lable of the pod
+    spec:          #container info
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+```
+```
+kubectl apply -f nginx-deploy.yaml 
+```
+
+```
+#nginx-svc.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-svc
+  labels:
+    app: nginx
+spec:
+  type: NodePort
+  ports:
+  - port: 8080
+    targetPort: 80
+  selector:
+    app: nginx
+```
+```
+kubectl apply -f nginx-svc.yaml
+```
+```
+$kubectl get pods,nodes,services -o wide
+NAME                                READY   STATUS             RESTARTS        AGE   IP             NODE      NOMINATED NODE   READINESS GATES
+pod/nginx-deploy-86dcfdf4c6-8bkfl   0/1     Running            5 (2m2s ago)    14m   10.244.2.238   worker2   <none>           <none>
+pod/nginx-deploy-86dcfdf4c6-ksgkv   0/1     Running            5 (103s ago)    14m   10.244.2.239   worker2   <none>           <none>
+pod/nginx-deploy-86dcfdf4c6-x4vjj   0/1     Running            5 (2m35s ago)   14m   10.244.1.34    worker1   <none>           <none>
+
+NAME               STATUS   ROLES           AGE     VERSION   INTERNAL-IP   EXTERNAL-IP   OS-IMAGE                         KERNEL-VERSION          CONTAINER-RUNTIME
+node/master-node   Ready    control-plane   2d18h   v1.28.2   10.178.0.18   <none>        Debian GNU/Linux 11 (bullseye)   5.10.0-26-cloud-amd64   containerd://1.6.25
+node/worker1       Ready    <none>          2d17h   v1.28.2   10.178.0.19   <none>        Debian GNU/Linux 11 (bullseye)   5.10.0-26-cloud-amd64   containerd://1.6.25
+node/worker2       Ready    <none>          25h     v1.28.2   10.178.0.20   <none>        Debian GNU/Linux 11 (bullseye)   5.10.0-26-cloud-amd64   containerd://1.6.25
+
+NAME                 TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)          AGE     SELECTOR
+service/kubernetes   ClusterIP   10.96.0.1        <none>        443/TCP          2d18h   <none>
+service/nginx-svc    NodePort    10.104.105.212   <none>        8080:32274/TCP   26m     app=nginx
+```
+
+nodePort open port to connect pod.<br>
+node(32274) - service(8080) - pod(80).<br>
+below command get same result!
+```
+curl 10.244.2.238:80
+curl 10.104.105.212:8080
+curl 10.178.0.18:32274
+```
