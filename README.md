@@ -806,8 +806,148 @@ curl 10.244.2.238:80
 curl 10.104.105.212:8080
 curl 10.178.0.18:32274
 ```
+if you have external ip on worker node, you can "curl [external-ip]:32274"
 
 # ch10. loadbalancer
 ```
 kubectl expose deployment [deploy-name] --type=LoadBalancer --name=[service-name]
 ```
+
+# ch11. ingress
+install ingress controller
+```
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.2/deploy/static/provider/cloud/deploy.yaml
+```
+create pod and service
+```
+#cafe.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coffee
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: coffee
+  template:
+    metadata:
+      labels:
+        app: coffee
+    spec:
+      containers:
+      - name: coffe
+        image: nginxdemos/nginx-hello:plain-text
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: coffee-svc
+spec:
+  ports:
+  - port: 80
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: coffee
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tea
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: tea
+  template:
+    metadata:
+      labels:
+        app: tea
+    spec:
+      containers:
+      - name: tea
+        image: nginxdemos/nginx-hello:plain-text
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tea-svc
+  labels:
+spec:
+  ports:
+  - port: 80
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: tea
+```
+```
+ kubectl apply -f cafe.yaml
+```
+
+create ingress
+```
+#cafe-ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cafe-ingress
+  annotations:
+    kubernetes.io/ingress.class: nginx
+spec:
+  rules:
+  - http:
+    paths:
+    - path: /tea
+      pathType: Prefix
+      backend:
+        service:
+          name: tea-svc
+          port:
+            number: 80
+    - path: /coffee
+      pathType: Prefix
+      backend:
+        service:
+          name: coffee-svc
+          port:
+            number: 80
+```
+check ingress created
+```
+$ kubectl get ingress
+NAME           CLASS    HOSTS   ADDRESS   PORTS   AGE
+cafe-ingress   <none>   *                 80      12m
+```
+we need ADDRESS
+```
+#ingress-nginx-svc-patch.yaml
+spec:
+  externalIPs:
+  - 10.178.0.19 #external IP
+```
+```
+kubectl patch service ingress-nginx-controller --namespace=ingress-nginx --patch "$(cat ingress-nginx-svc-patch.yaml)"
+```
+external-ip created.
+```
+$kubectl get service -n ingress-nginx
+ kubectl get service -n ingress-nginx
+NAME                                 TYPE           CLUSTER-IP       EXTERNAL-IP   PORT(S)                      AGE
+ingress-nginx-controller             LoadBalancer   10.107.90.109    10.178.0.19   80:31772/TCP,443:32706/TCP   45m
+ingress-nginx-controller-admission   ClusterIP      10.101.115.137   <none>        443/TCP                      45m
+```
+
+check result
+```
+$ curl http://10.178.0.19:31772/tea
+$ curl http://10.178.0.19:31772/coffee
+```
+when you try this command, the server is changed. load balancing work !
