@@ -951,3 +951,142 @@ $ curl http://10.178.0.19:31772/tea
 $ curl http://10.178.0.19:31772/coffee
 ```
 when you try this command, the server is changed. load balancing work !
+
+# ch12. limitRange
+
+```
+#set-limit-range.yaml
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: set-limit-range
+spec:
+  limits:
+  - max:
+      cou: "800m"  #0.8 cpu core
+    min:
+      cpu: "200m"  #0.2 cpu core
+    type: Conatainer
+```
+```
+$ kubectl apply -f set-limit-range.yaml
+$ kubectl describe limitrange set-limit-range
+Name:       set-limit-range
+Namespace:  default
+Type        Resource  Min   Max   Default Request  Default Limit  Max Limit/Request Ratio
+----        --------  ---   ---   ---------------  -------------  -----------------------
+Container   cpu       200m  800m  800m             800m           -
+```
+```
+#pod-with-cpu-range.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-with-cpu-range
+spec:
+  containers:
+  - name: pod-with-cpu-range
+    image: nginx
+    resources:
+      limits:
+        cpu: "800m"
+      requests:
+        cpu: "500m"  
+```
+
+# ch12. autoscaling
+install metrics server
+```
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+kubectl edit deployments.apps -n kube-system metrics-server
+```
+change metrics-server config
+```
+kubectl edit deployments.apps -n kube-system metrics-server
+```
+```
+spec:
+  containers:
+  - args:
+    - --cert-dir=/tmp
+    - --secure-port=4443
+    - --kubelet-insecure-tls=true # change
+    - --kubelet-preferred-address-types=InternalIP # change
+```
+change kube-apiserver.yaml
+```
+vi /etc/kubernetes/manifests/kube-apiserver.yaml
+```
+```
+spec:
+  containers:
+  - command:
+    - kube-apiserver
+    - --advertise-address=172.30.1.26
+    - --enable-aggregator-routing=true # change 
+```
+```
+#php-apache.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: php-apache
+spec:
+  selector:
+    matchLabels:
+      run: php-apache
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        run: php-apache
+    spec:
+      containers:
+      - name: php-apache
+        image: k8s.gcr.io/hpa-example
+        ports:
+        - containerPort: 80
+        resources:
+          limits:
+            cpu: 500m
+          requests: 
+            cpu: 200m
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: php-apache
+  labels:
+    run: php-apache
+spec:
+  ports:
+  - port: 80
+  selector:
+    run: php-apache
+```
+```
+kubectl apply -f php-apache.yaml
+```
+
+make autoscale
+```
+ kubectl autoscale deployment php-apache --cpu-percent=50 --min=1 --max=10
+```
+get hpa(horizontal pod autoscaling
+```
+$ kubectl get hpa
+NAME         REFERENCE               TARGETS   MINPODS   MAXPODS   REPLICAS   AGE
+php-apache   Deployment/php-apache   0%/50%    1         10        1          33s
+```
+
+check pod resource 
+```
+$ kubectl top pods
+NAME                          CPU(cores)   MEMORY(bytes)   
+php-apache-5d54745f55-nbh2b   1m           19Mi       
+```
+
+```
+kubectl run -i --tty load-generator --rm --image=busybox --restart-Never -- /bin/sh -c "while sleep 0.01; do wget -q -O- http://php-apache; done"
+```
+with this code, pod cpu usage increase, and num of additional pod added.
