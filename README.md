@@ -1162,3 +1162,11 @@ if you connect http://host_ip:8080/miniboard, you can connect to container.<br>
 next, we have to upload our image to docker repository.<br>
 kubernetes read image from docker repository.<br>
 (you can read image from local repository also, but it is out of this post scope)<br>
+
+
+<br>
+할일
+1. 도커 레포지토리에 이미지 등록한다. 
+2. 쿠버네티스로 이미지 불러온다. 
+3. db 이미지를 만든다. 
+4. db를 연결할 때 ip가 아니라 호스트명을 사용한다. 
