@@ -1090,3 +1090,75 @@ php-apache-5d54745f55-nbh2b   1m           19Mi
 kubectl run -i --tty load-generator --rm --image=busybox --restart-Never -- /bin/sh -c "while sleep 0.01; do wget -q -O- http://php-apache; done"
 ```
 with this code, pod cpu usage increase, and num of additional pod added.
+
+
+# ch13. create docker image
+install docker. (if you did not install docker)
+```
+sudo apt update
+sudo apt install -y docker.io
+```
+
+create Dockerfile
+```
+vi Dockerfile
+```
+```
+#Dockerfile
+
+FROM ubuntu:20.04
+
+# update apt
+RUN apt-get update && apt-get -y upgrade
+
+# install jre
+RUN apt install -y default-jre
+
+# install wget
+RUN apt-get -y install wget
+
+# install tomcat
+WORKDIR /usr/local
+RUN wget https://dlcdn.apache.org/tomcat/tomcat-9/v9.0.84/bin/apache-tomcat-9.0.84.tar.gz
+RUN tar -xvzf apache-tomcat-9.0.84.tar.gz
+RUN rm apache-tomcat-9.0.84.tar.gz
+RUN mv apache-tomcat-9.0.84 tomcat9
+
+# download war
+WORKDIR /usr/local/tomcat9/webapps
+RUN git clone https://github.com/hanhunh89/spring-miniBoard ./my
+RUN mv ./my/miniboard.war ./miniboard.war
+RUN rm -rf my
+
+
+# expose port
+EXPOSE 8080
+
+
+# clean apt package
+RUN rm -rf /var/lib/apt/lists/*
+
+CMD ["/usr/local/tomcat9/bin/catalina.sh", "run"]
+```
+
+build docker image
+```
+sudo docker build -t miniboardimage .
+```
+
+run docker container for test
+```
+docker run -p 8080:8080 miniboardimage
+```
+```
+curl localhost:8080/miniboard 
+curl host_ip:8080/miniboard 
+
+```
+
+8080 port of docker container is binded in host(local or server or e2c..) 8080 port.<br>
+if you connect http://host_ip:8080/miniboard, you can connect to container.<br>
+
+next, we have to upload our image to docker repository.<br>
+kubernetes read image from docker repository.<br>
+(you can read image from local repository also, but it is out of this post scope)<br>
