@@ -994,7 +994,7 @@ spec:
         cpu: "500m"  
 ```
 
-# ch12. autoscaling
+# ch13. autoscaling
 install metrics server
 ```
 kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
@@ -1092,7 +1092,7 @@ kubectl run -i --tty load-generator --rm --image=busybox --restart-Never -- /bin
 with this code, pod cpu usage increase, and num of additional pod added.
 
 
-# ch13. create docker image
+# ch14. create docker image
 install docker. (if you did not install docker)
 ```
 sudo apt update
@@ -1184,7 +1184,7 @@ miniboardimage            latest      8c10bc690bd0   24 hours ago   770MB
 ```
 $ sudo docker push embdaramzi/myrepository:miniboard
 ```
-# ch14. create kubernetes pod with customized docker image.
+# ch15. create kubernetes pod with customized docker image.
 
 ```
 #miniboard-deploy.yaml
@@ -1206,7 +1206,7 @@ spec:
     spec:
       containers:
       - name: miniboard
-        image: embdaramzi/myrepository:miniboard  # we created this docker image at ch.12
+        image: embdaramzi/myrepository:miniboard  # we created this docker image at ch.14 create docker image
         ports:
         - containerPort: 8080
 ```
