@@ -1163,7 +1163,27 @@ next, we have to upload our image to docker repository.<br>
 kubernetes read image from docker repository.<br>
 (you can read image from local repository also, but it is out of this post scope)<br>
 
-
+before next command, you have to sign up at https://hub.docker.com/ and create repository. <br>
+```
+$ sudo docker login
+```
+```
+$ sudo docker images
+REPOSITORY       TAG       IMAGE ID       CREATED        SIZE
+miniboardimage   latest    8c10bc690bd0   24 hours ago   770MB
+```
+```
+$ sudo docker tag miniboardimage:latest embdaramzi/myrepository:miniboard
+```
+```
+$ sudo docker images
+REPOSITORY                TAG         IMAGE ID       CREATED        SIZE
+embdaramzi/myrepository   miniboard   8c10bc690bd0   24 hours ago   770MB
+miniboardimage            latest      8c10bc690bd0   24 hours ago   770MB
+```
+```
+$ sudo docker push embdaramzi/myrepository:miniboard
+```
 <br>
 할일
 1. 도커 레포지토리에 이미지 등록한다. 
