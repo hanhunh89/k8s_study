@@ -1,7 +1,7 @@
 # k8s_study
 
-reference : 쉽게 시작하는 쿠버네티스 / 서지영 <br><br>
-
+reference : ch1 ~ ch13 : 쉽게 시작하는 쿠버네티스 / 서지영 <br>
+            ch13 : ~ google, chatGPT, in my brain...<br><br>
 you can install k8s with https://github.com/hanhunh89/k8s_install <br>
 
 
