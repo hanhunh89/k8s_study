@@ -1184,6 +1184,45 @@ miniboardimage            latest      8c10bc690bd0   24 hours ago   770MB
 ```
 $ sudo docker push embdaramzi/myrepository:miniboard
 ```
+# ch14. create kubernetes pod with customized docker image.
+
+```
+#miniboard-deploy.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: miniboard-deploy
+  labels:
+    app: miniboard
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: miniboard
+  template:
+    metadata:
+      labels:
+        app: miniboard
+    spec:
+      containers:
+      - name: miniboard
+        image: embdaramzi/myrepository:miniboard  # we created this docker image at ch.12
+        ports:
+        - containerPort: 8080
+```
+```
+kubectl apply -f miniboard-deploy.yaml
+```
+```
+$ kubectl get pods
+NAME                                READY   STATUS    RESTARTS   AGE
+miniboard-deploy-746f4f6c76-4j8rc   0/1     Pending   0          2m33s
+miniboard-deploy-746f4f6c76-khgzl   1/1     Running   0          8m44s
+miniboard-deploy-746f4f6c76-n7srq   1/1     Running   0          8m44s
+miniboard-deploy-746f4f6c76-r6vjj   1/1     Running   0          8m44s
+miniboard-deploy-746f4f6c76-wpp8r   1/1     Running   0          8m44s
+```
+
 <br>
 할일
 1. 도커 레포지토리에 이미지 등록한다. 
