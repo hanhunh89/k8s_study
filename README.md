@@ -1223,10 +1223,3 @@ miniboard-deploy-746f4f6c76-n7srq   1/1     Running   0          8m44s
 miniboard-deploy-746f4f6c76-r6vjj   1/1     Running   0          8m44s
 miniboard-deploy-746f4f6c76-wpp8r   1/1     Running   0          8m44s
 ```
-
-<br>
-할일
-1. db 이미지를 만들어서 miniboard를 정상적으로 서비스한다. 
-2. session을 잘 처리한다.
-3. 부하에 따른 pod 생성을 확인한다. 
-4. db를 연결할 때 ip가 아니라 호스트명을 사용한다. 
